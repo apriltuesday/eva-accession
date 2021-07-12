@@ -67,9 +67,10 @@ def add_to_command_file(properties_path, command):
 
 
 def cluster_one(source, vcf_file, project_accession, assembly_accession, private_config_xml_file,
-                profile, output_directory, logs_directory, clustering_artifact, only_printing, memory, dependency):
+                profile, output_directory, logs_directory, clustering_artifact, only_printing, memory, instance,
+                dependency):
     properties_path = create_properties_file(source, vcf_file, project_accession, assembly_accession,
-                                             private_config_xml_file, profile, output_directory)
+                                             private_config_xml_file, profile, output_directory, instance)
     command = generate_bsub_command(assembly_accession, properties_path, logs_directory, clustering_artifact, memory,
                                     dependency)
     if not only_printing:
@@ -77,7 +78,7 @@ def cluster_one(source, vcf_file, project_accession, assembly_accession, private
 
 
 def cluster_multiple(source, asm_vcf_prj_list, assembly_list, private_config_xml_file, profile,
-                     output_directory, logs_directory, clustering_artifact, only_printing, memory):
+                     output_directory, logs_directory, clustering_artifact, only_printing, memory, instance):
     """
     This method decides how to call the run_clustering method depending on the source (Mongo or VCF)
     """
@@ -85,27 +86,27 @@ def cluster_multiple(source, asm_vcf_prj_list, assembly_list, private_config_xml
 
     if source == 'MONGO':
         cluster_multiple_from_mongo(source, assembly_list, private_config_xml_file, profile, output_directory,
-                                    logs_directory, clustering_artifact, only_printing, memory)
+                                    logs_directory, clustering_artifact, only_printing, memory, instance)
 
     if source == 'VCF':
         cluster_multiple_from_vcf(source, asm_vcf_prj_list, private_config_xml_file, profile, output_directory,
-                                  logs_directory, clustering_artifact, only_printing, memory)
+                                  logs_directory, clustering_artifact, only_printing, memory, instance)
 
 
 def cluster_multiple_from_mongo(source, assembly_list, private_config_xml_file, profile,
-                                output_directory, logs_directory, clustering_artifact, only_printing, memory):
+                                output_directory, logs_directory, clustering_artifact, only_printing, memory, instance):
     """
     This method call the run_clustering method for each assembly
     """
     dependency = None
     for assembly_accession in assembly_list:
         cluster_one(source, None, None, assembly_accession, private_config_xml_file, profile, output_directory,
-                    logs_directory, clustering_artifact, only_printing, memory, dependency)
+                    logs_directory, clustering_artifact, only_printing, memory, instance, dependency)
         dependency = get_job_name(assembly_accession)
 
 
 def cluster_multiple_from_vcf(source, asm_vcf_prj_list, private_config_xml_file, profile,
-                              output_directory, logs_directory, clustering_artifact, only_printing, memory):
+                              output_directory, logs_directory, clustering_artifact, only_printing, memory, instance):
     """
     The list will be of the form: GCA_000000001.1#/file1.vcf.gz#PRJEB1111 GCA_000000002.2#/file2.vcf.gz#PRJEB2222 ...
     This method splits the triplets and then call the run_clustering method for each one
@@ -117,7 +118,7 @@ def cluster_multiple_from_vcf(source, asm_vcf_prj_list, private_config_xml_file,
         vcf_file = data[1]
         project_accession = data[2]
         cluster_one(source, vcf_file, project_accession, assembly_accession, private_config_xml_file, profile,
-                    output_directory, logs_directory, clustering_artifact, only_printing, memory, dependency)
+                    output_directory, logs_directory, clustering_artifact, only_printing, memory, instance, dependency)
         dependency = get_job_name(assembly_accession)
 
 
@@ -153,6 +154,7 @@ if __name__ == "__main__":
     parser.add_argument("--only-printing", help="Prepare and write the commands, but don't run them",
                         action='store_true', required=False)
     parser.add_argument("--memory", help="Amount of memory jobs will use", required=False)
+    parser.add_argument("--instance", help="Accessioning instance id", required=False, default=1, choices=range(1, 13))
     parser.add_argument('--help', action='help', help='Show this help message and exit')
 
     args = {}
@@ -160,7 +162,7 @@ if __name__ == "__main__":
         args = parser.parse_args()
         cluster_multiple(args.source, args.asm_vcf_prj_list, args.assembly_list, args.private_config_xml_file,
                          args.profile, args.output_directory, args.logs_directory, args.clustering_artifact,
-                         args.only_printing, args.memory)
+                         args.only_printing, args.memory, args.instance)
     except Exception as ex:
         logger.exception(ex)
         sys.exit(1)
